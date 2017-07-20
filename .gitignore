@@ -1,0 +1,5 @@
+*~
+/config/aduna/
+/config/elasticsearch/data
+/config/kafka-data/
+/config/zookeeper-data/
