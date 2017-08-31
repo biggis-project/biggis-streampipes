@@ -1,5 +1,5 @@
-# biggis-streampipes
-Stream pipes setup used in biggis
+# BigGIS-StreamPipes
+StreamPipes setup used in BigGIS
 
 - Currently, it relies on services running internally at FZI.
 
@@ -13,12 +13,12 @@ You can ignore the "Advanced Settings".
 * Go to "Install Pipeline Elements" --> "Manage Endpoints"
 * remove the existing endpoints
 * add instead
-    ** http://weatherinput:8087
-    ** http://restproducer:8085
-    ** http://dextractor:8086
-    ** http://sensebox-adapter:8090
-    ** http://sensebox-metadata-enricher:8090
-    ** http://pe-sources-samples:8090
-    ** http://pe-esper:8090
-    ** http://pe-sinks:8090
-    ** http://pe-flink-samples:8090
+    * http://weatherinput:8087
+    * http://restproducer:8085
+    * http://dextractor:8086
+    * http://sensebox-adapter:8090
+    * http://sensebox-metadata-enricher:8090
+    * http://pe-sources-samples:8090
+    * http://pe-esper:8090
+    * http://pe-sinks:8090
+    * http://pe-flink-samples:8090
