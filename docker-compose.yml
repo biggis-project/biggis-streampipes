@@ -2,7 +2,7 @@ version: '2.1'
 
 services:
   ### Michael Jahns
-  weather_input:
+  weatherinput:
     image: laus.fzi.de:8201/weatherba/weather_input
     ports:
       - "8087:8087"
@@ -204,11 +204,8 @@ services:
   jobmanager:
     image: laus.fzi.de:8201/streampipes/flink
     ports:
-      - "6123:6123"
-      - "8081:8081"
+      - "8081:8099"
     command: jobmanager
-    volumes:
-      - /home/lutz/BigGIS/biggis-streampipes/config/flink:/opt/flink/conf
     networks:
       spnet:
 
@@ -216,9 +213,9 @@ services:
     image: laus.fzi.de:8201/streampipes/flink
     depends_on:
       - jobmanager
+    environment:
+      - FLINK_NUM_SLOTS=20
     command: taskmanager
-    volumes:
-      - /home/lutz/BigGIS/biggis-streampipes/config/flink:/opt/flink/conf
     networks:
       spnet:
 
@@ -238,8 +235,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - "./config/nginx:/etc/nginx/conf.d"
-      - "./config/nginx/static-data:/usr/share/nginx/html/static-data"
+      - "./data/nginx-static-data:/usr/share/nginx/html/static-data"
     networks:
       spnet:
 
