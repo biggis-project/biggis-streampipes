@@ -4,6 +4,9 @@ services:
   ### Michael Jahns
   weatherinput:
     image: laus.fzi.de:8201/weatherba/weather_input
+    depends_on:
+      - "consul"
+      - "kafka"
     ports:
       - "8087:8087"
     volumes:
@@ -13,6 +16,8 @@ services:
 
   restproducer:
     image: laus.fzi.de:8201/weatherba/restproducer
+    depends_on:
+      - "consul"
     ports:
       - "8092:8085"
     volumes:
@@ -22,6 +27,10 @@ services:
 
   dextractor:
     image: laus.fzi.de:8201/weatherba/dextractor
+    depends_on:
+      - "consul"
+      - "jobmanager"
+      - "kafka"
     ports:
       - "8086:8086"
     volumes:
