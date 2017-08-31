@@ -85,8 +85,13 @@ services:
 
   sensebox-adapter:
     image: laus.fzi.de:8201/biggisstreampipes/senseboxadapter
-#    ports:
-#      - "8085:8085"
+    depends_on:
+      - "consul"
+    networks:
+      spnet:
+
+  sensebox-metadata-enricher:
+    image: laus.fzi.de:8201/biggisstreampipes/senseboxmetadataenricher
     depends_on:
       - "consul"
     networks:
