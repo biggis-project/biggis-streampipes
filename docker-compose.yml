@@ -38,11 +38,11 @@ services:
       - kafka
     ### This is necessary to access Kafka with the hostname "ipe-koi09", its advertised hostname
     links:
-      - "kafka:ipe-koi09"
+      - kafka:${HOSTNAME:-localhost}
     ports:
       - "9100:9100"
     environment:
-      KAFKA_SERVER: "ipe-koi09:9092"
+      KAFKA_SERVER: ${HOSTNAME:-localhost}:9092
     networks:
       spnet:
 
@@ -64,9 +64,9 @@ services:
     depends_on:
       - kafka
     links:
-      - "kafka:ipe-koi09"
+      - kafka:${HOSTNAME:-localhost}
     environment:
-      KAFKA_SERVER: "ipe-koi09:9092"
+      KAFKA_SERVER: ${HOSTNAME:-localhost}:9092
       MQTT_USER: "fzi-biggis-sensors"
       MQTT_PASSWORD: "ttn-account-v2.rYK7Ak_JKS2pfk8TNmuMZe3FRetPGvMAZmx09S2Bm98"
       CODEKUNST_SERVER: "ssl://eu.thethings.network:8883"
@@ -91,7 +91,7 @@ services:
       - "kafka"
       - "consul"
     links:
-      - "kafka:ipe-koi09"
+      - kafka:${HOSTNAME:-localhost}
     ports:
       - "8030:8030"
     volumes:
@@ -127,7 +127,7 @@ services:
     depends_on:
       - "consul"
     environment:
-      - STREAMPIPES_HOST=ipe-koi09.fzi.de
+      - STREAMPIPES_HOST=${HOSTNAME:-localhost}
 #    ports:
 #      - "8091:8091"
     volumes:
@@ -186,13 +186,13 @@ services:
   kafka:
     image: wurstmeister/kafka
     ### total unschön, aber sonst macht sich Kafka in die Hose, weil es mit Hostnamen und Advertised-Namen durcheinanderkommt
-    hostname: ipe-koi09
+    hostname: ${HOSTNAME:-localhost}
     depends_on:
       - zookeeper
     ports:
       - "9092:9092"
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: ipe-koi09.fzi.de
+      KAFKA_ADVERTISED_HOST_NAME: ${HOSTNAME:-localhost}
       KAFKA_ADVERTISED_PORT: 9092
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     volumes:
