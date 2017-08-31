@@ -259,10 +259,10 @@ services:
 
   activemq:
     image: laus.fzi.de:8201/streampipes/activemq
-    ### disabled by Viliam Simko on 2.5.2017 ### net: "host"
     ports:
       - "61616:61616"
       - "61614:61614"
+      - "8161:8161"
     networks:
       spnet:
 
