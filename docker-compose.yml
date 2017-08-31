@@ -1,195 +1,301 @@
 version: '2.1'
 
 services:
-   zookeeper:
-      image: biggis/zookeeper:3.4.6
-      hostname: zookeeper
-      ports:
-         - "2181:2181"
-      environment:
-         USER_ID: ${USER_ID-1000}
-         USER_NAME: zookeeper
-      volumes:
-         - ./config/zookeeper-data:/tmp/zookeeper/data
+  ### Michael Jahns
+  weather_input:
+    image: laus.fzi.de:8201/weatherba/weather_input
+    ports:
+      - "8087:8087"
+    volumes:
+      - ./templates-sources:/root/.ba/weather
+    networks:
+      spnet:
 
-   kafka:
-      image: biggis/kafka:0.10.1.1
-      ### total unschön, aber sonst macht sich Kafka in die Hose, weil es mit Hostnamen und Advertised-Namen durcheinanderkommt  
-      hostname: ipe-koi09
-      depends_on:
-         - zookeeper
-      ports:
-         - "9092:9092"
-      environment:
-         KAFKA_ADVERTISED_HOST_NAME: ipe-koi09
-         USER_ID: ${USER_ID-1000}
-         USER_NAME: kafka
-      volumes:
-         - ./config/kafka-data:/tmp/kafka/data
- 
-#   jobmanager:
-#      image: biggis/flink:1.2.0
-#      hostname: jobmanager
-#      ports:
-#         - "8081:8081"
-#         - "6123:6123"
-#      command: docker-entrypoint.sh jobmanager
-#      environment:
-#         USER_ID: ${USER_ID-1000}
-#         USER_NAME: flink
+  restproducer:
+    image: laus.fzi.de:8201/weatherba/restproducer
+    ports:
+      - "8092:8085"
+    volumes:
+      - ./apache:/root/.ba/restinterface
+    networks:
+      spnet:
+
+  dextractor:
+    image: laus.fzi.de:8201/weatherba/dextractor
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./weather:/root/.ba/dextractor
+    networks:
+      spnet:
+
+
+  ### Jochen Lutz
+  sensebox-simple-rest-server:
+    image: biggis/sbsrs:0.2.3
+    hostname: sbsrs
+    depends_on:
+      - kafka
+    ### This is necessary to access Kafka with the hostname "ipe-koi09", its advertised hostname
+    links:
+      - "kafka:ipe-koi09"
+    ports:
+      - "9100:9100"
+    environment:
+      KAFKA_SERVER: "ipe-koi09:9092"
+    networks:
+      spnet:
+
+  ssh-tunnel:
+    image: mikenowak/ssh
+    command: "sshtunnel"
+    ports:
+      - "8022:22"
+      #- "8085:8085"
+    volumes:
+      - ./config/ssh-tunnel/conf:/etc/ssh
+      - ./config/ssh-tunnel/data:/home
+    networks:
+      spnet:
+
+  codekunst-mqtt-adapter:
+    image: biggis/codekunst-mqtt:3.0.0
+    restart: always
+    depends_on:
+      - kafka
+    links:
+      - "kafka:ipe-koi09"
+    environment:
+      KAFKA_SERVER: "ipe-koi09:9092"
+      MQTT_USER: "fzi-biggis-sensors"
+      MQTT_PASSWORD: "ttn-account-v2.rYK7Ak_JKS2pfk8TNmuMZe3FRetPGvMAZmx09S2Bm98"
+      CODEKUNST_SERVER: "ssl://eu.thethings.network:8883"
+      CODEKUNST_TOPIC: "+/devices/+/up"
+    networks:
+      spnet:
+
+  sensebox-adapter:
+    image: laus.fzi.de:8201/biggisstreampipes/senseboxadapter
+#    ports:
+#      - "8085:8085"
+    depends_on:
+      - "consul"
+    networks:
+      spnet:
+
+
+  ### StreamPipes
+  backend:
+    image: laus.fzi.de:8201/streampipes/ce-backend
+    depends_on:
+      - "kafka"
+      - "consul"
+    links:
+      - "kafka:ipe-koi09"
+    ports:
+      - "8030:8030"
+    volumes:
+      - "./config:/root/.streampipes"
+      - "./config/aduna:/root/.aduna"
+    networks:
+      spnet:
+
+  pe-sources-samples:
+    image: laus.fzi.de:8201/streampipes/pe-sources-samples
+    depends_on:
+      - "consul"
+#    ports:
+#      - "8089:8089"
+    volumes:
+      - "./config:/root/.streampipes"
+    networks:
+      spnet:
+
+  pe-esper:
+    image: laus.fzi.de:8201/streampipes/pe-processors-esper
+    depends_on:
+      - "consul"
+#    ports:
+#      - "8090:8090"
+    volumes:
+      - "./config:/root/.streampipes"
+    networks:
+      spnet:
+
+  pe-sinks:
+    image: laus.fzi.de:8201/streampipes/pe-sinks-standalone
+    depends_on:
+      - "consul"
+    environment:
+      - STREAMPIPES_HOST=ipe-koi09.fzi.de
+#    ports:
+#      - "8091:8091"
+    volumes:
+      - "./config:/root/.streampipes"
+    networks:
+      spnet:
+
+  pe-flink-samples:
+    image: laus.fzi.de:8201/streampipes/pe-mixed-flink
+    depends_on:
+      - "consul"
+#    ports:
+#      - "8094:8094"
+    volumes:
+      - "./config:/root/.streampipes"
+    networks:
+      spnet:
+
+  mnist:
+    image: laus.fzi.de:8201/streampipes/pe-sources-mnist
+#    ports:
+#      - "8078:8078"
+    volumes:
+      - ./config:/root/.streampipes
+    networks:
+      spnet:
+
+
+  ### externe Komponenten
+  consul:
+    image: consul
+    environment:
+      - "CONSUL_LOCAL_CONFIG={\"disable_update_check\": true}"
+      - "CONSUL_BIND_INTERFACE=eth0"
+      - "CONSUL_HTTP_ADDR=0.0.0.0"
+    entrypoint:
+      - consul
+      - agent
+      - -server
+      - -bootstrap-expect=1
+      - -data-dir=/consul/data
+      - -node=consul-one
+      - -bind={{ GetInterfaceIP "eth0" }}
+      - -client=0.0.0.0
+      - -enable-script-checks=true
+      - -ui
+    volumes:
+      - ./config/consul:/consul/data
+    ports:
+      - "8500:8500"
+      - "8600:8600"
+    networks:
+      spnet:
+        ipv4_address: 172.30.0.9
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+    #volumes:
+    #  - ./config/zookeeper-data:/tmp/zookeeper/data
+    networks:
+      spnet:
+
+  kafka:
+    image: wurstmeister/kafka
+    ### total unschön, aber sonst macht sich Kafka in die Hose, weil es mit Hostnamen und Advertised-Namen durcheinanderkommt
+    hostname: ipe-koi09
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: ipe-koi09.fzi.de
+      KAFKA_ADVERTISED_PORT: 9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+#      - ./config/kafka-data:/tmp/kafka/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      spnet:
+
+  jobmanager:
+    image: laus.fzi.de:8201/streampipes/flink
+    ports:
+      - "6123:6123"
+      - "8081:8081"
+    command: jobmanager
+    volumes:
+      - /home/lutz/BigGIS/biggis-streampipes/config/flink:/opt/flink/conf
+    networks:
+      spnet:
+
+  taskmanager:
+    image: laus.fzi.de:8201/streampipes/flink
+    depends_on:
+      - jobmanager
+    command: taskmanager
+    volumes:
+      - /home/lutz/BigGIS/biggis-streampipes/config/flink:/opt/flink/conf
+    networks:
+      spnet:
+
+  kafka-web-console:
+    image: hwestphal/kafka-web-console
+    ports:
+      - "9000:9000"
+    volumes:
+      - "./config/kafka-web-console:/data hwestphal/kafka-web-console"
+    networks:
+      spnet:
+
+  nginx:
+    image: laus.fzi.de:8201/streampipes/nginx
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - "./config/nginx:/etc/nginx/conf.d"
+      - "./config/nginx/static-data:/usr/share/nginx/html/static-data"
+    networks:
+      spnet:
+
+  couchdb:
+    image: couchdb
+    ports:
+      - "5984:5984"
+    volumes:
+      - "./config/couchdb/data:/usr/local/var/lib/couchdb"
+    networks:
+      spnet:
+
+  activemq:
+    image: laus.fzi.de:8201/streampipes/activemq
+    ### disabled by Viliam Simko on 2.5.2017 ### net: "host"
+    ports:
+      - "61616:61616"
+      - "61614:61614"
+    networks:
+      spnet:
+
+#  elasticsearch:
+#    image: elasticsearch:5.2.2-alpine
+#    ports:
+#      - "9200:9200"
+#      - "9300:9300"
+#    volumes:
+#      - ./config/elasticsearch/data:/usr/share/elasticsearch/data
+#      - ./config/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+#    networks:
+#      spnet:
 #
-#   taskmanager:
-#      image: biggis/flink:1.2.0
-#      hostname: taskmanager
-#      depends_on:
-#         - jobmanager
-#      command: docker-entrypoint.sh taskmanager
-#      environment:
-#         USER_ID: ${USER_ID-1000}
-#         USER_NAME: flink
+#  kibana:
+#    image: kibana:5.2.2
+#    ports:
+#      - "5601:5601"
+#    depends_on:
+#      - elasticsearch
+#    volumes:
+#      - ./config/kibana/kibana.yml:/opt/kibana/config/kibana.yml
+#    networks:
+#      spnet:
 
-   jobmanager:
-      image: laus.fzi.de:8201/streampipes/flink
-      ports:
-         - "6123:6123"
-         - "8081:8081"
-      command: jobmanager
-      volumes:
-         - /home/lutz/BigGIS/biggis-streampipes/config/flink:/opt/flink/conf
-
-   taskmanager:
-      image: laus.fzi.de:8201/streampipes/flink
-      depends_on:
-         - jobmanager
-      command: taskmanager
-      volumes:
-         - /home/lutz/BigGIS/biggis-streampipes/config/flink:/opt/flink/conf
-
-
-
-   kafka-web-console:
-      image: hwestphal/kafka-web-console
-      ports:
-         - "9000:9000"
-      volumes:
-         - "./config/kafka-web-console:/data hwestphal/kafka-web-console"
-
-   sensebox-simple-rest-server:
-      image: biggis/sbsrs:0.2.3
-      hostname: sbsrs
-      depends_on:
-         - kafka
-     ### This is necessary to access Kafka with the hostname "ipe-koi09", its advertised hostname
-      links:
-         - "kafka:ipe-koi09"
-      ports:
-         - "9100:9100"
-      environment:
-         KAFKA_SERVER: "ipe-koi09:9092"
-
-   codekunst-mqtt-adapter:
-      image: biggis/codekunst-mqtt:2.1.1
-      depends_on:
-         - kafka
-      links:
-         - "kafka:ipe-koi09"
-      environment:
-         KAFKA_SERVER: "ipe-koi09:9092"
-         MQTT_USER: "fzi-biggis-sensors"
-         MQTT_PASSWORD: "ttn-account-v2.rYK7Ak_JKS2pfk8TNmuMZe3FRetPGvMAZmx09S2Bm98"
-         CODEKUNST_SERVER: "ssl://eu.thethings.network:8883"
-         CODEKUNST_TOPIC: "+/devices/+/up"
-
-# StreamPipes Installation Files
-   backend:
-      image: laus.fzi.de:8201/streampipes/semantic-epa-backend
-      ### da war ein net: "host", das muss vermutlich durch depends_on, links ersetzt werden
-      depends_on:
-         - kafka
-      links:
-         - "kafka:ipe-koi09"
-      ports: 
-         - "8030:8030"
-      volumes:
-         - "./config:/root/.streampipes"
-         - "./config/aduna:/root/.aduna"
-
-   sources:
-      image: laus.fzi.de:8201/streampipes/semantic-epa-sources-samples
-      ports:
-         - "8089:8089"
-      volumes:
-         - "./config:/root/.streampipes"
-
-   esper:
-      image: laus.fzi.de:8201/streampipes/semantic-epa-esper
-      ports:
-         - "8090:8090"
-      volumes:
-         - "./config:/root/.streampipes"
-
-   actions:
-      image: laus.fzi.de:8201/streampipes/semantic-epa-actions-samples
-      ports:
-         - "8091:8091"
-      volumes:
-         - "./config:/root/.streampipes"
-
-   activemq:
-      image: laus.fzi.de:8201/streampipes/activemq
-      ### disabled by Viliam Simko on 2.5.2017 ### net: "host"
-      ports:
-         - "61616:61616"
-         - "61614:61614"
-
-   couchdb:
-      image: couchdb
-      ports:
-         - "5984:5984"
-      volumes:
-         - "./config/couchdb/data:/usr/local/var/lib/couchdb"
-
-   nginx:
-      image: laus.fzi.de:8201/streampipes/nginx
-      ports:
-         - "80:80"
-      volumes:
-         - "./config/nginx:/etc/nginx/conf.d"
-
-   flink-samples:
-      image: laus.fzi.de:8201/streampipes/semantic-epa-flink-samples
-      ports: 
-         - "8094:8094"
-      volumes:
-         - "./config:/root/.streampipes"
-
-### flink:
-###   image: laus.fzi.de:8201/streampipes/flink
-###   net: "host"
-###   ports:
-###     - "8099:8099"
-###     - "9010:9010"
-###     - "6123:6123"
-###   expose:
-###     - "8081"
-###     - "6123"
-###   volumes:
-###     - ./config/flink:/opt/flink/conf
-
-   elasticsearch:
-      image: elasticsearch:2.4.1
-      ports:
-         - "9200:9200"
-         - "9300:9300"
-      volumes:
-         - ./config/elasticsearch/data:/usr/share/elasticsearch/data
-         - ./config/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
-
-   kibana:
-      image: kibana:4.6.1
-      ports:
-         - "5601:5601"
-      depends_on:
-         - elasticsearch
-      volumes:
-         - ./config/kibana/kibana.yml:/opt/kibana/config/kibana.yml
+networks:
+  spnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+          gateway: 172.30.0.1
