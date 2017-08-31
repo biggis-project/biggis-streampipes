@@ -146,15 +146,6 @@ services:
     networks:
       spnet:
 
-  mnist:
-    image: laus.fzi.de:8201/streampipes/pe-sources-mnist
-#    ports:
-#      - "8078:8078"
-    volumes:
-      - ./config:/root/.streampipes
-    networks:
-      spnet:
-
 
   ### externe Komponenten
   consul:
