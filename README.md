@@ -5,7 +5,7 @@ StreamPipes setup used in BigGIS
 
 # Running locally in docker
 You can use docker-compose directly.
-However, we provide a `Makefile` simple for convenience with the following targets:
+However, we also provide a simple `Makefile` for convenience with the following targets:
 
 ```
 $ make
