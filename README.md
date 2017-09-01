@@ -3,6 +3,20 @@ StreamPipes setup used in BigGIS
 
 - Currently, it relies on services running internally at FZI.
 
+# Running locally in docker
+You can use docker-compose directly.
+However, we provide a `Makefile` simple for convenience with the following targets:
+
+```
+$ make
+
+Useful targets:
+ - restart : restarts all containers using a fresh config dir
+ - down    : stop all containers and cleanup
+ - ps      : print status about running containers
+
+```
+
 # Initial Setup
 
 StreamPipes starts its setup assistent on first access.
