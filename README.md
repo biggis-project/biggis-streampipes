@@ -3,7 +3,7 @@ StreamPipes setup used in BigGIS
 
 - Currently, it relies on services running internally at FZI.
 
-# Running locally in docker
+## Running locally in docker
 You can use docker-compose directly.
 However, we also provide a simple `Makefile` for convenience with the following targets:
 
@@ -17,12 +17,12 @@ Useful targets:
 
 ```
 
-# Initial Setup
+## Initial Setup
 
 StreamPipes starts its setup assistent on first access.
 You can ignore the "Advanced Settings".
 
-## Add Endpoints
+### Add Endpoints
 
 * Go to "Install Pipeline Elements" --> "Manage Endpoints"
 * remove the existing endpoints
@@ -36,3 +36,16 @@ You can ignore the "Advanced Settings".
     * http://pe-esper:8090
     * http://pe-sinks:8090
     * http://pe-flink-samples:8090
+
+## Using the SSH server
+
+The pipeline has an ssh server integrated to access the docker network for debugging.
+To use it, add your username to service -> ssh-tunnel -> command.
+The default value "sshtunnel" is not a command but the first user added.
+Afterwards, generate a a key pair with `ssh-keygen`,
+append the generated public key (id_rsa.pub) to `data/ssh-tunnel/home/$user/.ssh/authorized_keys`,
+and use `ssh -i id_rsa $username@$dockerhost:8022` to login into the StreamPipes docker network.
+
+You need root privileges to edit `authorized_keys`.
+Without root privileges, you can use `docker exec -ti biggisstreampipes_ssh-tunnel_1 bash`
+to open a shell in the running docker image and edit `/home/$username/.ssh/authorized_keys` there.
