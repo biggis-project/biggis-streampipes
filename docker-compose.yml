@@ -218,7 +218,7 @@ services:
   jobmanager:
     image: laus.fzi.de:8201/streampipes/flink
     ports:
-      - "8081:8099"
+      - "8099:8099"
     command: jobmanager
     networks:
       spnet:
@@ -292,6 +292,104 @@ services:
 #      - ./config/kibana/kibana.yml:/opt/kibana/config/kibana.yml
 #    networks:
 #      spnet:
+
+  hdfs-name:
+    image: biggis/hdfs:2.7.1
+    ports:
+      - "50070:50070"
+      - "8020:8020"
+    command: start.sh name
+    environment:
+      USER_ID: ${USER_ID-1000}
+      USER_NAME: hdfs
+      HADOOP_MASTER_ADDRESS: hdfs-name
+      TIMEZONE: Europe/Berlin
+    volumes:
+      - ./data/hdfs-data:/data/hdfs
+    networks:
+      spnet:
+
+  hdfs-sname:
+    image: biggis/hdfs:2.7.1
+    depends_on:
+        - hdfs-name
+    ports:
+      - "50090:50090"
+    command: start.sh sname
+    environment:
+      USER_ID: ${USER_ID-1000}
+      USER_NAME: hdfs
+      HADOOP_MASTER_ADDRESS: hdfs-name
+      TIMEZONE: Europe/Berlin
+    volumes:
+      - ./data/hdfs-data:/data/hdfs
+    networks:
+      spnet:
+
+  hdfs-data:
+    image: biggis/hdfs:2.7.1
+    depends_on:
+        - hdfs-name
+    ports:
+      - "50010:50010"
+      - "50075:50075"
+    command: start.sh data
+    environment:
+      USER_ID: ${USER_ID-1000}
+      USER_NAME: hdfs
+      HADOOP_MASTER_ADDRESS: hdfs-name
+      TIMEZONE: Europe/Berlin
+    volumes:
+      - ./data/hdfs-data:/data/hdfs
+    networks:
+      spnet:
+
+  hdfs-client:
+    image: biggis/hdfs-client:2.7.1
+    command: execute.sh -copyFromLocal /data/hdfs/hamlet.txt /
+    environment:
+      USER_ID: ${USER_ID-1000}
+      USER_NAME: hdfs
+      HADOOP_MASTER_ADDRESS: hdfs-name
+      TIMEZONE: Europe/Berlin
+    volumes:
+      - ./data/hamlet.txt:/data/hdfs/hamlet.txt
+    networks:
+      spnet:
+
+  spark-master:
+    image: biggis/spark:2.1.0
+    hostname: spark-master
+    ports:
+      #- "4040:4040"
+      - "6066:6066"
+      - "7077:7077"
+      - "8082:8080"
+    command: start.sh master
+    environment:
+      USER_ID: ${USER_ID-1000}
+      USER_NAME: spark
+      TIMEZONE: Europe/Berlin
+      HADOOP_MASTER_ADDRESS: hdfs-name
+    networks:
+      spnet:
+
+  spark-worker:
+    image: biggis/spark:2.1.0
+    hostname: spark-worker
+    depends_on:
+      - spark-master
+    command: start.sh worker
+    ports:
+      - "8081:8081"
+    environment:
+      USER_ID: ${USER_ID-1000}
+      USER_NAME: spark
+      TIMEZONE: Europe/Berlin
+      SPARK_MASTER_ADDRESS: spark-master
+      HADOOP_MASTER_ADDRESS: hdfs-name
+    networks:
+      spnet:
 
 networks:
   spnet:
