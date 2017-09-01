@@ -62,8 +62,8 @@ services:
       - "8022:22"
       #- "8085:8085"
     volumes:
-      - ./config/ssh-tunnel/conf:/etc/ssh
-      - ./config/ssh-tunnel/data:/home
+      - ./data/ssh-tunnel/hostkeys:/etc/ssh/hostkeys
+      - ./data/ssh-tunnel/home:/home
     networks:
       spnet:
 
