@@ -21,7 +21,7 @@ services:
     ports:
       - "8092:8085"
     volumes:
-      - ./apache:/root/src/main/java/ba/restinterface/ba/restinterface
+      - ./data/restproducer:/src/main/java/ba/restinterface
     networks:
       spnet:
 
