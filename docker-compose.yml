@@ -103,6 +103,8 @@ services:
     image: laus.fzi.de:8201/biggisstreampipes/rasterdata-endless-source
     depends_on:
       - "kafka"
+    environment:
+      JAVA_OPTS: "-Dkafka.server=kafka:9092"
     volumes:
       - "./data/tiles-tp:/tiles"
     networks:
