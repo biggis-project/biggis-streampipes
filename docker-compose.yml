@@ -92,6 +92,20 @@ services:
     networks:
       spnet:
 
+  rasterdata-adapter:
+    image: laus.fzi.de:8201/biggisstreampipes/rasterdata-adapter:latest
+    depends_on:
+      - "consul"
+    networks:
+      spnet:
+
+  rasterdata-endless-source:
+    image: laus.fzi.de:8201/biggisstreampipes/rasterdata-endless-source:latest
+    depends_on:
+      - "kafka"
+    networks:
+      spnet:
+
 
   ### StreamPipes
   backend:
