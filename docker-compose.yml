@@ -21,7 +21,7 @@ services:
     ports:
       - "8092:8085"
     volumes:
-      - ./apache:/root/src/main/java/ba/restinterface/ba/restinterface
+      - ./data/restproducer:/src/main/java/ba/restinterface
     networks:
       spnet:
 
@@ -89,6 +89,20 @@ services:
     image: laus.fzi.de:8201/biggisstreampipes/senseboxmetadataenricher
     depends_on:
       - "consul"
+    networks:
+      spnet:
+
+  rasterdata-adapter:
+    image: laus.fzi.de:8201/biggisstreampipes/rasterdata-adapter:latest
+    depends_on:
+      - "consul"
+    networks:
+      spnet:
+
+  rasterdata-endless-source:
+    image: laus.fzi.de:8201/biggisstreampipes/rasterdata-endless-source:latest
+    depends_on:
+      - "kafka"
     networks:
       spnet:
 
@@ -335,7 +349,7 @@ services:
 
   hdfs-client:
     image: biggis/hdfs-client:2.7.1
-    command: execute.sh -copyFromLocal /data/hdfs/hamlet.txt /
+    command: upload.sh -copyFromLocal /data/hdfs/hamlet.txt /
     environment:
       USER_ID: ${USER_ID-1000}
       USER_NAME: hdfs
